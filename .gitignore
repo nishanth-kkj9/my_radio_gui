@@ -1,4 +1,26 @@
+# Ignore Visual Studio
+.vs/
+
+# Ignore Python virtual environment
 venv/
+
+# Ignore Python cache
 __pycache__/
 *.pyc
+*.pyo
+
+# Ignore logs
+*.log
+
+# Ignore zip backups
 *.zip
+
+# Ignore IDE files
+.vscode/
+
+# Ignore runtime/generated files (optional)
+favorites.json
+recent.json
+session.json
+stats.json
+radio_log.txt
