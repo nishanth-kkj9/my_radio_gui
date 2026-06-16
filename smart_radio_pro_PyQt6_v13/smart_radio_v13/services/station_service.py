@@ -1,9 +1,9 @@
 """
 services/station_service.py — Station fetching with TTL cache and background preload.
 
-FIX: fetch_category() now uses a single lock acquire that covers BOTH the cache
-read AND the cache write, eliminating the TOCTOU race where two threads could
-simultaneously miss the cache and fetch the same category.
+FIX: fetch_category() now waits behind a condition variable while the same
+category is already being fetched, eliminating duplicate concurrent network
+requests for a category.
 """
 
 from __future__ import annotations
@@ -17,6 +17,8 @@ from utils.logger import log
 
 _cache:      dict[str, tuple[float, list[dict]]] = {}
 _cache_lock  = threading.Lock()
+_cache_cv    = threading.Condition(_cache_lock)
+_fetching:   set[str] = set()
 
 
 def _fetch_fresh(category: str) -> list[dict]:
@@ -44,29 +46,44 @@ def fetch_category(category: str, use_cache: bool = True) -> list[dict]:
     """
     Fetch stations for *category*.
 
-    FIX: The entire cache-check + cache-write is now performed under ONE lock
-    acquisition. Previously, the read happened outside the lock and the write
-    inside a separate lock acquisition, creating a window where two threads
-    could both see a cache miss and both fetch the same category concurrently.
+    v13: concurrent callers for the same category wait behind a real
+    condition variable instead of all fetching the same network payload.
     """
-    with _cache_lock:
+    fresh: list[dict] = []
+
+    with _cache_cv:
         if use_cache and category in _cache:
             ts, cached = _cache[category]
             if time.time() - ts < CACHE_TTL:
                 log(f"Cache hit '{category}' ({len(cached)} stations)", "debug")
                 return cached.copy()
-        # Cache miss or expired — fetch outside the lock to avoid blocking
-        # other categories. We re-acquire the lock to write the result.
 
-    # ── Fetch outside the lock (network call) ─────────────────
-    fresh = _fetch_fresh(category)
+        while category in _fetching:
+            _cache_cv.wait()
 
-    with _cache_lock:
-        if fresh:
-            _cache[category] = (time.time(), fresh.copy())
-        elif category in _cache:
-            log(f"0 results for '{category}' — keeping stale cache", "warning")
-            return _cache[category][1].copy()
+        if use_cache and category in _cache:
+            ts, cached = _cache[category]
+            if time.time() - ts < CACHE_TTL:
+                log(f"Cache hit '{category}' after wait ({len(cached)} stations)", "debug")
+                return cached.copy()
+
+        _fetching.add(category)
+
+    fetch_ok = False
+    try:
+        fresh = _fetch_fresh(category)
+        fetch_ok = True
+    except Exception as e:
+        log(f"fetch_category failed '{category}': {e}", "error")
+
+    with _cache_cv:
+        _fetching.discard(category)
+        if fetch_ok:
+            if fresh:
+                _cache[category] = (time.time(), fresh.copy())
+            elif category not in _cache or not use_cache:
+                _cache.pop(category, None)
+        _cache_cv.notify_all()
 
     return fresh
 

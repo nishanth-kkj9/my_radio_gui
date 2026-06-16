@@ -59,6 +59,21 @@ def _ensure_vlc_path() -> None:
     except ImportError:
         pass   # winreg not available (non-Windows env)
 
+    # PATH search fallback — covers scoop, winget and manual PATH additions
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["where", "vlc"], capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0:
+            vlc_exe = result.stdout.strip().splitlines()[0].strip()
+            if vlc_exe:
+                vlc_dir = os.path.dirname(vlc_exe)
+                if vlc_dir:
+                    candidates.append(vlc_dir)
+    except Exception:
+        pass  # where command not available or failed
+
     seen: set[str] = set()
     for path in candidates:
         path = os.path.normpath(path)
@@ -143,7 +158,7 @@ class RadioPlayer:
         self.reconnecting      = False
         self._reconnect_count  = 0
         self._play_start       = 0.0
-        self._last_buf_log     = 0.0   # rate-limit buffering log (once per 10s max)
+        self._last_buf_log     = 0.0   # rate-limit buffering log (once per 30s max)
 
         self._vlc_lock       = threading.RLock()
         self._reconnect_lock = threading.Lock()
@@ -182,6 +197,7 @@ class RadioPlayer:
 
     def _on_vlc_playing(self, event):
         log("VLC: playing", "debug")
+        self._last_buf_log = time.time()  # reset buffer log on successful play
         if self._reconnect_count > 0:
             log(f"Stream recovered after {self._reconnect_count} attempt(s)", "info")
         self._reconnect_count  = 0
@@ -191,9 +207,9 @@ class RadioPlayer:
     def _on_vlc_buffering(self, event):
         # VLC fires buffering events continuously during live stream playback
         # (it refills the buffer while audio is already playing — this is normal).
-        # Rate-limit to one log entry per 10 s to avoid flooding the log file.
+        # Rate-limit to one log entry per 30 s to avoid flooding the log file.
         now = time.time()
-        if now - self._last_buf_log >= 10.0:
+        if now - self._last_buf_log >= 30.0:
             self._last_buf_log = now
             log("VLC: buffering", "debug")
 

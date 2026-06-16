@@ -1,4 +1,4 @@
-# Smart Radio Pro v7 — Python dependencies
+# Smart Radio Pro v13 — Python dependencies
 # Run: pip install -r requirements.txt
 # Requires: VLC media player installed from https://www.videolan.org/vlc/
 

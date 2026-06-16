@@ -1,5 +1,5 @@
 """
-ui/app_ui.py — Smart Radio Pro v9  (PyQt6 port, bug-fixed + UI refresh)
+ui/app_ui.py — Smart Radio Pro v13  (PyQt6 port, bug-fixed + UI refresh)
 
 All 15 v6 features are preserved:
   FEAT-1  Auto-resume last played station (1.8 s delay, cancellable)
@@ -30,36 +30,32 @@ Key Qt6 patterns used:
 """
 from __future__ import annotations
 
-import io
 import json
 import os
 import random
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-
-import requests
-from PIL import Image, ImageDraw
 from PyQt6.QtCore import (
     Qt, QTimer, QObject, pyqtSignal, QPoint,
 )
 from PyQt6.QtGui import (
-    QPixmap, QImage, QKeySequence, QShortcut,
-    QWheelEvent, QColor, QPainter, QFont, QIcon,
+    QPixmap, QKeySequence, QShortcut,
+    QWheelEvent, QColor, QPainter, QBrush,
 )
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QPushButton, QLineEdit,
     QSlider, QScrollArea, QGridLayout, QVBoxLayout,
     QHBoxLayout, QFrame, QDialog,
     QApplication, QMenu, QCheckBox, QFileDialog,
-    QMessageBox, QListWidget, QListWidgetItem,
+    QMessageBox,
 )
 
 from core.config import (
     COLS, DEBOUNCE_MS, EQ_MS, ICY_POLL_MS,
-    LOGO_MAX_BYTES, LOGO_SZ, LOGO_TIMEOUT, MAX_RESULTS,
+    LOGO_SZ, MAX_RESULTS,
     MAX_WORKERS, MEM_CACHE_MAX, SPINNER_MS, THUMB_SZ, TIMER_MS,
-    CATEGORIES, PRELOAD_CATEGORIES, MAX_RECONNECT, VOLUME_STEP,
+    CATEGORIES, MAX_RECONNECT, VOLUME_STEP,
     AUTO_RESUME, AUTO_RESUME_DELAY, MINI_LOGO_SZ,
     SORT_OPTIONS, SEARCH_HISTORY_MAX,
     STATS_ENABLED,
@@ -68,19 +64,18 @@ from core.equalizer import Equalizer
 from core.player import RadioPlayer
 from core.theme import (
     ACCENT, ACCENT2, BG, BORDER, BORDER2, GREEN, NOW_BAR,
-    ORANGE, RED, SURFACE, SURFACE2, SURFACE3, TEXT, TEXT_DIM, TEXT_MID, YELLOW,
+    ORANGE, RED, SURFACE, SURFACE2, TEXT, TEXT_DIM,
 )
 from services.station_service import fetch_category, preload_categories
 from ui.components import _clean_name, StationCard
 from ui.mini_player import MiniPlayer
 from ui.spectrum import SpectrumWidget
 from core.api import get_logo_session
+from utils.logo_loader import submit_logo_load
 from utils.logo_cache import (
-    get as db_logo_get, put as db_logo_put,
     vacuum as db_vacuum, stats as db_stats,
 )
 from utils.logger import log
-from utils.maintenance import purge_mem_logo_cache
 import utils.stats as play_stats
 from utils.storage import (
     load_favorites, save_favorites,
@@ -114,6 +109,18 @@ class _Invoker(QObject):
         self._signal.emit(func)
 
 
+class _LogoReceiver(QObject):
+    """Small QObject target for logo callbacks that are not widgets."""
+
+    def __init__(self, callback):
+        super().__init__()
+        self._callback = callback
+
+    def set_logo(self, pixmap: QPixmap):
+        if pixmap and not pixmap.isNull():
+            self._callback(pixmap)
+
+
 _invoker = _Invoker()
 
 
@@ -142,25 +149,36 @@ def _fmt_time(seconds: int) -> str:
     return f"{m}:{s:02d}"
 
 
-def _pil_to_qpixmap(pil_img: Image.Image) -> QPixmap:
-    buf = io.BytesIO()
-    pil_img.save(buf, format="PNG")
-    pixmap = QPixmap()
-    pixmap.loadFromData(buf.getvalue())
-    return pixmap
-
-
 def _make_default_logo(size: int) -> QPixmap:
-    img  = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    draw.ellipse((0, 0, size - 1, size - 1), fill="#1c2130")
+    """Create a default radio-station logo using QPainter (no PIL needed)."""
+    from PyQt6.QtCore import Qt as _Qt
+    pixmap = QPixmap(size, size)
+    pixmap.fill(_Qt.GlobalColor.transparent)
+    p = QPainter(pixmap)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+    # Outer circle — dark fill
+    p.setPen(_Qt.PenStyle.NoPen)
+    p.setBrush(QBrush(QColor("#1c2130")))
+    p.drawEllipse(0, 0, size - 1, size - 1)
+
+    # Radio icon made of simple shapes
+    p.setBrush(QBrush(QColor(ACCENT)))
+
     s = size
-    draw.ellipse((int(s*.30), int(s*.52), int(s*.50), int(s*.68)), fill=ACCENT)
-    draw.ellipse((int(s*.52), int(s*.50), int(s*.72), int(s*.66)), fill=ACCENT)
-    draw.rectangle((int(s*.46), int(s*.18), int(s*.50), int(s*.58)), fill=ACCENT)
-    draw.rectangle((int(s*.68), int(s*.16), int(s*.72), int(s*.56)), fill=ACCENT)
-    draw.rectangle((int(s*.46), int(s*.18), int(s*.72), int(s*.24)), fill=ACCENT)
-    return _pil_to_qpixmap(img)
+    # Speaker cones (two circles)
+    p.drawEllipse(int(s * .30), int(s * .52), int(s * .20), int(s * .16))
+    p.drawEllipse(int(s * .52), int(s * .50), int(s * .20), int(s * .16))
+
+    # Speaker body (rectangles)
+    p.drawRect(int(s * .46), int(s * .18), int(s * .04), int(s * .40))
+    p.drawRect(int(s * .68), int(s * .16), int(s * .04), int(s * .40))
+
+    # Top connector bar
+    p.drawRect(int(s * .46), int(s * .18), int(s * .26), int(s * .06))
+
+    p.end()
+    return pixmap
 
 
 # ── Toast overlay ─────────────────────────────────────────────────────────────
@@ -259,7 +277,7 @@ class RadioUI(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Smart Radio Pro v12")
+        self.setWindowTitle("Smart Radio Pro v13.1")
         self.setMinimumSize(920, 620)
 
         session = load_session()
@@ -302,6 +320,7 @@ class RadioUI(QMainWindow):
         self.recent:    list[dict] = load_recent()
 
         self.current_station: dict | None = None
+        self._closing = False
         self.current_cat      = self._session_cat
         self._muted           = False
         self._sort_idx        = self._session_sort
@@ -337,6 +356,7 @@ class RadioUI(QMainWindow):
 
         self._current_toast: _Toast | None = None
         self._hist_popup: _HistoryPopup | None = None
+        self._mini_pos_cache = session.get("mini_pos")
 
         # Pre-built default logos
         self.default_logo       = _make_default_logo(LOGO_SZ)
@@ -383,10 +403,19 @@ class RadioUI(QMainWindow):
         self._spinner_timer.stop()
         self._debounce_timer.stop()
         self._destroy_mini_player()
+        self._hide_hist_popup()
+        if self._current_toast:
+            try:
+                self._current_toast.hide()
+                self._current_toast.deleteLater()
+            except RuntimeError:
+                pass
 
         if self.current_station and self._play_start:
             elapsed = int(time.time() - self._play_start)
             play_stats.record_listen_time(self.current_station["url"], elapsed)
+
+        self._closing = True
 
         self.player.shutdown()
         # Cancel any still-queued logo-loading futures immediately (Python ≥ 3.9).
@@ -414,6 +443,8 @@ class RadioUI(QMainWindow):
         event.accept()
 
     def _on_permanent_failure(self, url: str):
+        if self._closing:
+            return
         def _ui():
             self._now_title.setText("⚠  Connection lost")
             self._now_sub.setText("Could not reconnect — try another station")
@@ -493,7 +524,7 @@ class RadioUI(QMainWindow):
         pro_lbl = QLabel(" PRO")
         pro_lbl.setStyleSheet(f"color: {ACCENT2}; background: transparent; font-size: 8pt; font-weight: bold; padding-top: 5px;")
         bl.addWidget(pro_lbl)
-        ver_lbl = QLabel(" v12")
+        ver_lbl = QLabel(" v13")
         ver_lbl.setStyleSheet(f"color: {TEXT_DIM}; background: transparent; font-size: 7pt; padding-top: 6px;")
         bl.addWidget(ver_lbl)
         hdr_layout.addWidget(brand)
@@ -597,16 +628,9 @@ class RadioUI(QMainWindow):
         self._vol_slider.setValue(70)
         self._vol_slider.setFixedWidth(100)
         self._vol_slider.setToolTip("Volume  (↑↓ keys or scroll wheel)")
-        # FIX v11: Use positive groove margins instead of negative handle margins.
-        # Qt 6 on Windows rejects negative margin-top/margin-bottom on QSlider
-        # handles and prints "Could not parse stylesheet" twice per slider.
-        # Positive groove margins achieve the same thin-track look with zero warnings.
-        self._vol_slider.setStyleSheet(
-            f"QSlider::groove:horizontal {{ background: {SURFACE2}; height: 4px; border: none; "
-            "margin-top: 5px; margin-bottom: 5px; }} "
-            f"QSlider::handle:horizontal {{ background: {ACCENT}; width: 13px; height: 13px; "
-            "border: none; border-radius: 6px; }}"
-        )
+        # FIX v13: Qt6 on Windows cannot parse any QSlider stylesheet at all —
+        # even empty strings trigger "Could not parse stylesheet". Fusion style
+        # provides native appearance; no custom QSS needed.
         self._vol_slider.valueChanged.connect(self._set_volume)
         rl.addWidget(self._vol_slider)
 
@@ -894,7 +918,7 @@ class RadioUI(QMainWindow):
 
         hint = QLabel("Space·stop  M·mute  F·fav  Ctrl+M·mini  ↑↓·vol  ←→·nav  ?·help")
         hint.setStyleSheet(
-            f"color: #25304a; background: transparent; font-size: 7pt; padding: 0 12px;")
+            f"color: {TEXT_DIM}; background: transparent; font-size: 7pt; padding: 0 12px;")
         inner_layout.addWidget(hint)
 
         bar_layout.addWidget(inner)
@@ -1012,12 +1036,16 @@ class RadioUI(QMainWindow):
         self._fetch_gen += 1
         gen = self._fetch_gen
         def task():
+            if self._closing:
+                return
             stations = fetch_category(category)
+            if self._closing:
+                return
             self._stations_ready.emit(stations, gen)
         self.executor.submit(task)
 
     def _on_stations_loaded(self, stations: list[dict], gen: int):
-        if gen != self._fetch_gen:
+        if self._closing or gen != self._fetch_gen:
             return
         self._stop_spinner()
         self.all_stations = stations
@@ -1219,6 +1247,8 @@ class RadioUI(QMainWindow):
         self._apply_sort_and_render()
 
     def _refresh_current(self):
+        if self._closing:
+            return
         cat = self.current_cat
         if cat in ("favorites", "recent"):
             self._switch_to_cat(cat)
@@ -1227,7 +1257,11 @@ class RadioUI(QMainWindow):
         self._fetch_gen += 1
         gen = self._fetch_gen
         def task():
+            if self._closing:
+                return
             stations = fetch_category(cat, use_cache=False)
+            if self._closing:
+                return
             self._stations_ready.emit(stations, gen)
         self.executor.submit(task)
         self.toast("Refreshing stations…")
@@ -1238,68 +1272,73 @@ class RadioUI(QMainWindow):
         default = (self.default_logo if size == LOGO_SZ
                    else self.default_logo_mini if size == MINI_LOGO_SZ
                    else self.default_logo_small)
+        if self._closing:
+            return
         if not url:
             card.set_logo(default)
             return
-        # Skip URLs that permanently failed this session (403, DNS, 404, SVG, etc.)
-        if url in self._failed_logo_cache:
-            card.set_logo(default)
-            return
-        key = f"{url}@{size}"
-        with self._mem_lock:
-            if key in self._mem_cache:
-                card.set_logo(self._mem_cache[key])
-                return
-
-        _card_ref = card
-
-        def task():
-            # Double-check inside the task: another thread may have already marked
-            # this URL as failed between the time the task was queued and now.
-            if url in self._failed_logo_cache:
-                self._logo_ready.emit(_card_ref, default)
-                return
-            try:
-                raw_bytes = db_logo_get(url, size)
-                from_db   = raw_bytes is not None
-                if not from_db:
-                    # Use the shared logo session (connection pooling, no retry)
-                    # instead of bare requests.get() — avoids a new TCP connection
-                    # per logo and keeps the API session's retry budget clean.
-                    r = get_logo_session().get(
-                        url, timeout=LOGO_TIMEOUT, verify=True, stream=True)
-                    r.raise_for_status()
-                    raw_bytes = r.raw.read(LOGO_MAX_BYTES, decode_content=True)
-                img  = Image.open(io.BytesIO(raw_bytes)).convert("RGBA")
-                img  = img.resize((size, size), Image.LANCZOS)
-                mask = Image.new("L", (size, size), 0)
-                ImageDraw.Draw(mask).ellipse((1, 1, size - 1, size - 1), fill=255)
-                out  = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-                out.paste(img, mask=mask)
-                if not from_db:
-                    buf = io.BytesIO()
-                    out.save(buf, format="PNG")
-                    db_logo_put(url, size, buf.getvalue())
-                pixmap = _pil_to_qpixmap(out)
-                with self._mem_lock:
-                    self._mem_cache[key] = pixmap
-                    self._mem_keys.append(key)
-                    purge_mem_logo_cache(self._mem_cache, self._mem_keys, MEM_CACHE_MAX)
-                self._logo_ready.emit(_card_ref, pixmap)
-            except Exception as e:
-                log(f"Logo load failed ({url!r}): {e}", "debug")
-                # Mark URL as permanently failed — skipped on all future renders
-                self._failed_logo_cache.add(url)
-                self._logo_ready.emit(_card_ref, default)
-
-        self.executor.submit(task)
+        submit_logo_load(
+            url=url,
+            size=size,
+            session=get_logo_session(),
+            failed_set=self._failed_logo_cache,
+            executor=self.executor,
+            logo_ready_signal=self._logo_ready,
+            card_ref=card,
+            default_pixmap=default,
+            mem_cache=self._mem_cache,
+            mem_keys=self._mem_keys,
+            mem_lock=self._mem_lock,
+            max_mem_entries=MEM_CACHE_MAX,
+        )
 
     def _on_logo_ready(self, card_ref, pixmap):
+        if self._closing:
+            return
         try:
-            if card_ref and not card_ref.isHidden():
-                card_ref.set_logo(pixmap)
+            if hasattr(card_ref, "isHidden") and card_ref.isHidden():
+                return
+            card_ref.set_logo(pixmap)
         except RuntimeError:
-            pass  # widget was deleted
+            pass
+
+    def _load_thumb_logo(self, url: str):
+        if self._closing or not url:
+            return
+        receiver = _LogoReceiver(lambda pix: self._now_thumb.setPixmap(pix))
+        submit_logo_load(
+            url=url,
+            size=THUMB_SZ,
+            session=get_logo_session(),
+            failed_set=self._failed_logo_cache,
+            executor=self.executor,
+            logo_ready_signal=self._logo_ready,
+            card_ref=receiver,
+            default_pixmap=self.default_logo_small,
+            mem_cache=self._mem_cache,
+            mem_keys=self._mem_keys,
+            mem_lock=self._mem_lock,
+            max_mem_entries=MEM_CACHE_MAX,
+        )
+
+    def _load_mini_logo(self, url: str):
+        if self._closing or not url:
+            return
+        receiver = _LogoReceiver(lambda pix: setattr(self, "_mini_logo_pixmap", pix))
+        submit_logo_load(
+            url=url,
+            size=MINI_LOGO_SZ,
+            session=get_logo_session(),
+            failed_set=self._failed_logo_cache,
+            executor=self.executor,
+            logo_ready_signal=self._logo_ready,
+            card_ref=receiver,
+            default_pixmap=self.default_logo_mini,
+            mem_cache=self._mem_cache,
+            mem_keys=self._mem_keys,
+            mem_lock=self._mem_lock,
+            max_mem_entries=MEM_CACHE_MAX,
+        )
 
     # ── Search ────────────────────────────────────────────────────────────────
 
@@ -1482,6 +1521,8 @@ class RadioUI(QMainWindow):
     # ── Playback ──────────────────────────────────────────────────────────────
 
     def _play(self, station: dict, fade: bool = False):
+        if self._closing:
+            return
         if (self.current_station
                 and self.current_station["url"] == station["url"]
                 and self.player.is_playing()):
@@ -1529,6 +1570,8 @@ class RadioUI(QMainWindow):
             self._play(self.recent[0])
 
     def _stop(self):
+        if self._closing:
+            return
         self._cancel_sleep_timer()
 
         def _do_stop():
@@ -1651,62 +1694,6 @@ class RadioUI(QMainWindow):
         QTimer.singleShot(0, lambda: self._tick_timer(gen))
         QTimer.singleShot(0, lambda: self._tick_meta(gen))
 
-    def _load_thumb_logo(self, url: str):
-        def task():
-            try:
-                raw_bytes = db_logo_get(url, THUMB_SZ)
-                from_db   = raw_bytes is not None
-                if not from_db:
-                    r         = requests.get(url, timeout=LOGO_TIMEOUT, verify=True, stream=True)
-                    r.raise_for_status()
-                    raw_bytes = r.raw.read(LOGO_MAX_BYTES, decode_content=True)
-                img  = Image.open(io.BytesIO(raw_bytes)).convert("RGBA")
-                img  = img.resize((THUMB_SZ, THUMB_SZ), Image.LANCZOS)
-                mask = Image.new("L", (THUMB_SZ, THUMB_SZ), 0)
-                ImageDraw.Draw(mask).ellipse((1, 1, THUMB_SZ-1, THUMB_SZ-1), fill=255)
-                out  = Image.new("RGBA", (THUMB_SZ, THUMB_SZ), (0, 0, 0, 0))
-                out.paste(img, mask=mask)
-                if not from_db:
-                    buf = io.BytesIO()
-                    out.save(buf, format="PNG")
-                    db_logo_put(url, THUMB_SZ, buf.getvalue())
-                pix = _pil_to_qpixmap(out)
-                def _ui():
-                    self._now_thumb.setPixmap(pix)
-                invoke_main(_ui)
-            except Exception:
-                pass
-        self.executor.submit(task)
-
-    def _load_mini_logo(self, url: str):
-        def task():
-            try:
-                raw_bytes = db_logo_get(url, MINI_LOGO_SZ)
-                from_db   = raw_bytes is not None
-                if not from_db:
-                    r         = requests.get(url, timeout=LOGO_TIMEOUT, verify=True, stream=True)
-                    r.raise_for_status()
-                    raw_bytes = r.raw.read(LOGO_MAX_BYTES, decode_content=True)
-                img  = Image.open(io.BytesIO(raw_bytes)).convert("RGBA")
-                img  = img.resize((MINI_LOGO_SZ, MINI_LOGO_SZ), Image.LANCZOS)
-                mask = Image.new("L", (MINI_LOGO_SZ, MINI_LOGO_SZ), 0)
-                ImageDraw.Draw(mask).ellipse(
-                    (1, 1, MINI_LOGO_SZ-1, MINI_LOGO_SZ-1), fill=255)
-                out  = Image.new("RGBA", (MINI_LOGO_SZ, MINI_LOGO_SZ), (0, 0, 0, 0))
-                out.paste(img, mask=mask)
-                # Cache to DB so next launch serves from disk (zero network cost)
-                if not from_db:
-                    buf = io.BytesIO()
-                    out.save(buf, format="PNG")
-                    db_logo_put(url, MINI_LOGO_SZ, buf.getvalue())
-                pix  = _pil_to_qpixmap(out)
-                def _ui():
-                    self._mini_logo_pixmap = pix
-                invoke_main(_ui)
-            except Exception:
-                pass
-        self.executor.submit(task)
-
     # ── Tick loops ────────────────────────────────────────────────────────────
 
     def _tick_timer(self, gen: int):
@@ -1825,6 +1812,8 @@ class RadioUI(QMainWindow):
             self.toast("Pinned on top" if self._always_on_top else "Unpinned")
 
     def _toggle_mini_player(self):
+        if self._closing:
+            return
         if self._mini_player is not None:
             self._destroy_mini_player()
             self.show()
@@ -1848,11 +1837,9 @@ class RadioUI(QMainWindow):
             is_playing       = lambda: self.player.is_playing(),
             is_muted         = lambda: self._muted,
         )
-        # Restore last saved position if available
-        session = load_session()
-        mini_pos = session.get("mini_pos")
-        if mini_pos and isinstance(mini_pos, list) and len(mini_pos) == 2:
-            self._mini_player.move(mini_pos[0], mini_pos[1])
+        # Restore last saved position from in-memory cache (avoid disk I/O)
+        if self._mini_pos_cache and isinstance(self._mini_pos_cache, list) and len(self._mini_pos_cache) == 2:
+            self._mini_player.move(self._mini_pos_cache[0], self._mini_pos_cache[1])
         self._mini_player.show()
         self._mini_btn.setStyleSheet(
             f"color: {ACCENT}; background: transparent; font-size: 13pt; padding: 0 6px;")
@@ -1869,7 +1856,8 @@ class RadioUI(QMainWindow):
         if self._mini_player is not None:
             # Save current position so it restores next time
             pos = self._mini_player.pos()
-            save_session(mini_pos=[pos.x(), pos.y()])
+            self._mini_pos_cache = [pos.x(), pos.y()]
+            save_session(mini_pos=self._mini_pos_cache)
             self._mini_player.cleanup()
             self._mini_player.close()
             self._mini_player.deleteLater()
@@ -2041,15 +2029,9 @@ class RadioUI(QMainWindow):
             sl.setRange(-20, 20)
             sl.setValue(int(current_bands[i]))
             sl.setFixedHeight(80)
-            # FIX v11: positive groove margins instead of negative handle margins —
-            # Qt 6 Windows rejects margin-left/margin-right with negative values on
-            # vertical slider handles ("Could not parse stylesheet" × 2 per slider).
-            sl.setStyleSheet(
-                f"QSlider::groove:vertical {{ background: {SURFACE2}; width: 4px; border: none; "
-                "margin-left: 3px; margin-right: 3px; }} "
-                f"QSlider::handle:vertical {{ background: {ACCENT}; width: 10px; height: 10px; "
-                "border: none; border-radius: 5px; }}"
-            )
+            # FIX v13: Qt6 on Windows rejects ALL QSlider sub-control stylesheets.
+            # Skip setStyleSheet entirely — Fusion style provides native appearance.
+            # EQ sliders use dark theme naturally through Fusion style inheritance.
             _i = i
             def _on_band(val, bi=_i, vl=val_lbl):
                 if _syncing[0]:
@@ -2134,12 +2116,8 @@ class RadioUI(QMainWindow):
         minutes_slider.setRange(5, 120)
         minutes_slider.setValue(30)
         # FIX v11: positive groove margins (no negative handle margins → no Qt 6 warnings)
-        minutes_slider.setStyleSheet(
-            f"QSlider::groove:horizontal {{ background: {SURFACE2}; height: 6px; border: none; "
-            "margin-top: 4px; margin-bottom: 4px; }} "
-            f"QSlider::handle:horizontal {{ background: {ORANGE}; width: 14px; height: 14px; "
-            "border: none; border-radius: 7px; }}"
-        )
+        # FIX v13: Qt6 on Windows cannot parse QSlider sub-control stylesheets.
+        # Fusion style provides native appearance — no custom QSS needed.
 
         minutes_lbl = QLabel("30 minutes")
         minutes_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -2191,6 +2169,8 @@ class RadioUI(QMainWindow):
         self._sleep_end = None
 
     def _sleep_stop(self):
+        if self._closing:
+            return
         self._sleep_end    = None
         self._sleep_thread = None
         def _ui():

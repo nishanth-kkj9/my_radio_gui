@@ -205,16 +205,9 @@ class MiniPlayer(QWidget):
         self._vol_slider.setFixedWidth(90)
         self._vol_slider.setFixedHeight(24)
         self._vol_slider.setToolTip("Volume")
-        # Qt6/Windows-safe QSS: no border-radius on groove/sub-page,
-        # positive groove margins only (negative handle margins cause parse errors)
-        self._vol_slider.setStyleSheet(
-            f"QSlider::groove:horizontal {{ background: {SURFACE2}; height: 4px;"
-            "  border: none; margin: 10px 0; }}"
-            f"QSlider::sub-page:horizontal {{ background: {ACCENT}; height: 4px;"
-            "  border: none; margin: 10px 0; }}"
-            f"QSlider::handle:horizontal {{ background: {ACCENT}; width: 14px; height: 14px;"
-            "  border: none; border-radius: 7px; margin: -5px 0; }}"
-        )
+        # FIX v13: Qt6 on Windows rejects ALL QSlider sub-control stylesheets
+        # (groove, handle, sub-page) — even minimal ones produce warnings.
+        # Fusion style provides native appearance; no custom QSS needed.
         self._vol_slider.valueChanged.connect(self._cb_vol)
         body_layout.addWidget(self._vol_slider)
         body_layout.addSpacing(14)

@@ -1,4 +1,4 @@
-# core/config.py — All tuneable constants in one place.  (v6)
+# core/config.py — All tuneable constants in one place.  (v13)
 
 # ── Network ────────────────────────────────────────────────────────────────────
 API_TIMEOUT    = 8        # seconds per API host attempt
@@ -12,6 +12,8 @@ ALLOWED_STREAM_SCHEMES = {"http", "https", "rtsp", "rtp", "mms", "rtmp"}
 VLC_INSTANCE_ARGS = [
     "--no-video",
     "--quiet",
+    "--intf", "dummy",          # suppress all UI — library mode
+    "--aout=directsound",       # Windows DirectSound audio output (reliable)
     "--network-caching=3000",
     "--live-caching=3000",
     "--http-reconnect",
