@@ -2,9 +2,11 @@
 
 A modern internet radio player built with PyQt6 and VLC.
 
-![Python](https://img.shields.io/badge/python-3.10+-blue)
-![PyQt6](https://img.shields.io/badge/PyQt6-6.4+-green)
-![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)
+[![Python](https://img.shields.io/badge/python-3.10+-blue)](https://www.python.org/)
+[![PyQt6](https://img.shields.io/badge/PyQt6-6.4+-green)](https://www.riverbankcomputing.com/software/pyqt/)
+[![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)]()
+[![License](https://img.shields.io/badge/license-MIT-green)]()
+[![Version](https://img.shields.io/badge/version-13.1-blue)]()
 
 ## Features
 
@@ -35,11 +37,18 @@ pip install -r requirements.txt
 ## Quick Start
 
 ```bash
+# Clone the repository
+cd smart_radio_pro_PyQt6_v13
+
+# Create virtual environment (recommended)
+python -m venv venv
+source venv/Scripts/activate  # Windows: venv\Scripts\activate
+
 # Install dependencies
-pip install -r requirements.txt
+pip install -r smart_radio_v13/requirements.txt
 
 # Run the app
-python main.py
+python smart_radio_v13/main.py
 ```
 
 ## Keyboard Shortcuts
@@ -63,15 +72,19 @@ python main.py
 
 ```
 smart_radio_pro_PyQt6_v13/
+├── LICENSE              # MIT License
+├── README.md           # This file
+├── .gitignore         # Git ignore patterns
 ├── smart_radio_v13/
-│   ├── core/           # Player, config, theme, state, equalizer
-│   ├── services/       # Station fetching with caching
-│   ├── ui/             # Main UI, mini-player, components
-│   ├── utils/          # Logo cache, storage, logger, stats
-│   ├── main.py         # Entry point
-│   └── requirements.txt
-├── README.md
-└── .gitignore
+│   ├── __init__.py
+│   ├── main.py        # Entry point
+│   ├── requirements.txt
+│   ├── CHANGELOG.md  # Version history
+│   ├── core/        # Player, config, theme, state, equalizer
+│   ├── services/    # Station fetching with caching
+│   ├── ui/          # Main UI, mini-player, components
+│   ├── utils/       # Logo cache, storage, logger, stats
+│   └── tests/       # Test modules
 ```
 
 ## Configuration

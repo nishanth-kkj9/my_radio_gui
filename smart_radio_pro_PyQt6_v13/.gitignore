@@ -1,0 +1,75 @@
+# ==============================
+# Smart Radio Pro — .gitignore
+# ==============================
+
+# ----------------------
+# Python
+# ----------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ----------------------
+# IDE & Editor
+# ----------------------
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ----------------------
+# Testing & Coverage
+# ----------------------
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# ----------------------
+# Runtime & Generated
+# ----------------------
+# Local config (uncomment if you want to track settings)
+# session.json
+favorites.json
+recent.json
+stats.json
+radio_log.txt
+logos.db
+
+# M3U exports
+*.m3u
+*.m3u8
+
+# OS notifications cache
+*.log
