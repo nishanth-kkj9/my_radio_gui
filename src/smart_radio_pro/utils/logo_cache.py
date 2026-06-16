@@ -26,8 +26,8 @@ import threading
 import time
 import os
 
-from core.config import LOGO_DB_MAX_ENTRIES, LOGO_DB_TTL_DAYS
-from utils.logger import log
+from smart_radio_pro.core.config import LOGO_DB_MAX_ENTRIES, LOGO_DB_TTL_DAYS
+from smart_radio_pro.utils.logger import log
 
 _ROOT = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")

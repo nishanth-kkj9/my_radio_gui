@@ -20,12 +20,12 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QCursor, QColor
 
-from core.theme import (
+from smart_radio_pro.core.theme import (
     SURFACE, SURFACE2, SURFACE3, BORDER, BORDER2,
     ACCENT, ACCENT2, ACCENT3,
     TEXT, TEXT_DIM, TEXT_MID, RED, GREEN,
 )
-from core.config import LOGO_SZ
+from smart_radio_pro.core.config import LOGO_SZ
 
 CARD_W = 192
 CARD_H = 268

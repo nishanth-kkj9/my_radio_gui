@@ -13,8 +13,8 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from urllib.parse import urlparse
 
-from core.config import API_TIMEOUT, ALLOWED_STREAM_SCHEMES
-from utils.logger import log
+from smart_radio_pro.core.config import API_TIMEOUT, ALLOWED_STREAM_SCHEMES
+from smart_radio_pro.utils.logger import log
 
 API_HOSTS = [
     "https://de1.api.radio-browser.info",

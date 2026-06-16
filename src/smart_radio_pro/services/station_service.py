@@ -11,9 +11,9 @@ from __future__ import annotations
 import threading, time
 from concurrent.futures import ThreadPoolExecutor
 
-from core.api import fetch_stations, fetch_stations_by_tag
-from core.config import MAX_RESULTS, QUERY_MAP, PRELOAD_CATEGORIES, CACHE_TTL
-from utils.logger import log
+from smart_radio_pro.core.api import fetch_stations, fetch_stations_by_tag
+from smart_radio_pro.core.config import MAX_RESULTS, QUERY_MAP, PRELOAD_CATEGORIES, CACHE_TTL
+from smart_radio_pro.utils.logger import log
 
 _cache:      dict[str, tuple[float, list[dict]]] = {}
 _cache_lock  = threading.Lock()

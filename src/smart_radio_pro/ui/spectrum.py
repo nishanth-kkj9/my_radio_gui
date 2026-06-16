@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QPainter, QColor
 
-from core.theme import SURFACE2, NOW_BAR
+from smart_radio_pro.core.theme import SURFACE2, NOW_BAR
 
 # ── Geometry ──────────────────────────────────────────────────────────────────
 N_BARS   = 16

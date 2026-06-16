@@ -27,11 +27,16 @@ import sys
 import traceback
 from types import TracebackType
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Allow running directly via `python src/smart_radio_pro/main.py` without
+# installing the package first. Has no effect (and is harmless) once the
+# package is properly installed, e.g. via `pip install -e .`.
+_PKG_PARENT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _PKG_PARENT not in sys.path:
+    sys.path.insert(0, _PKG_PARENT)
 
 from PyQt6.QtWidgets import QApplication
 
-from ui.app_ui import RadioUI
+from smart_radio_pro.ui.app_ui import RadioUI
 
 
 def _install_excepthook():
@@ -43,7 +48,7 @@ def _install_excepthook():
         evalue: BaseException,
         etb: TracebackType | None,
     ) -> None:
-        from utils.logger import log
+        from smart_radio_pro.utils.logger import log
         tb = "".join(traceback.format_exception(etype, evalue, etb))
         log(f"Uncaught exception:\n{tb}", "error")
         _original(etype, evalue, etb)

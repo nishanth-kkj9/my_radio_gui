@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer, QPoint, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QCursor, QFontMetrics
 
-from core.theme import ACCENT, ACCENT2, BORDER, NOW_BAR, SURFACE2, TEXT, TEXT_DIM
+from smart_radio_pro.core.theme import ACCENT, ACCENT2, BORDER, NOW_BAR, SURFACE2, TEXT, TEXT_DIM
 
 MINI_W  = 560   # wide enough for all controls with generous spacing
 MINI_H  = 86

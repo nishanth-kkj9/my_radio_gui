@@ -8,7 +8,7 @@ Gain range: −20 to +20 dB.
 """
 
 from __future__ import annotations
-from utils.logger import log
+from smart_radio_pro.utils.logger import log
 
 
 class Equalizer:

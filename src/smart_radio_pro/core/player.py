@@ -13,10 +13,10 @@ from __future__ import annotations
 import os, sys, threading, time
 from typing import Callable, Optional
 
-from core.api import is_safe_url
-from core.config import VLC_INSTANCE_ARGS, HEALTH_INTERVAL, MAX_RECONNECT, RECONNECT_DELAYS
-from core.equalizer import Equalizer
-from utils.logger import log
+from smart_radio_pro.core.api import is_safe_url
+from smart_radio_pro.core.config import VLC_INSTANCE_ARGS, HEALTH_INTERVAL, MAX_RECONNECT, RECONNECT_DELAYS
+from smart_radio_pro.core.equalizer import Equalizer
+from smart_radio_pro.utils.logger import log
 
 
 def _ensure_vlc_path() -> None:

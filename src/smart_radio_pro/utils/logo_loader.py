@@ -30,10 +30,10 @@ from PIL import Image, ImageDraw
 from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtGui import QPixmap
 
-from core.config import LOGO_MAX_BYTES, LOGO_TIMEOUT
-from utils.logger import log
-from utils.logo_cache import get as db_logo_get, put as db_logo_put
-from utils.maintenance import purge_mem_logo_cache
+from smart_radio_pro.core.config import LOGO_MAX_BYTES, LOGO_TIMEOUT
+from smart_radio_pro.utils.logger import log
+from smart_radio_pro.utils.logo_cache import get as db_logo_get, put as db_logo_put
+from smart_radio_pro.utils.maintenance import purge_mem_logo_cache
 
 
 def _pil_to_qpixmap(pil_img: Image.Image) -> QPixmap:

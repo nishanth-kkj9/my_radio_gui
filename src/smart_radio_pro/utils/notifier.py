@@ -15,7 +15,7 @@ import sys
 import threading
 import time
 
-from utils.logger import log
+from smart_radio_pro.utils.logger import log
 
 _enabled     = True
 _last_sent   = 0.0

@@ -20,7 +20,7 @@ import os
 import threading
 import time
 
-from utils.logger import log
+from smart_radio_pro.utils.logger import log
 
 _ROOT      = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 STATS_FILE = os.path.join(_ROOT, "stats.json")

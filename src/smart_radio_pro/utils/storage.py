@@ -12,8 +12,8 @@ from __future__ import annotations
 import json
 import os
 
-from core.config import MAX_RECENT
-from utils.logger import log
+from smart_radio_pro.core.config import MAX_RECENT
+from smart_radio_pro.utils.logger import log
 
 _ROOT = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")

@@ -51,7 +51,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
 )
 
-from core.config import (
+from smart_radio_pro.core.config import (
     COLS, DEBOUNCE_MS, EQ_MS, ICY_POLL_MS,
     LOGO_SZ, MAX_RESULTS,
     MAX_WORKERS, MEM_CACHE_MAX, SPINNER_MS, THUMB_SZ, TIMER_MS,
@@ -60,24 +60,24 @@ from core.config import (
     SORT_OPTIONS, SEARCH_HISTORY_MAX,
     STATS_ENABLED,
 )
-from core.equalizer import Equalizer
-from core.player import RadioPlayer
-from core.theme import (
+from smart_radio_pro.core.equalizer import Equalizer
+from smart_radio_pro.core.player import RadioPlayer
+from smart_radio_pro.core.theme import (
     ACCENT, ACCENT2, BG, BORDER, BORDER2, GREEN, NOW_BAR,
     ORANGE, RED, SURFACE, SURFACE2, TEXT, TEXT_DIM,
 )
-from services.station_service import fetch_category, preload_categories
-from ui.components import _clean_name, StationCard
-from ui.mini_player import MiniPlayer
-from ui.spectrum import SpectrumWidget
-from core.api import get_logo_session
-from utils.logo_loader import submit_logo_load
-from utils.logo_cache import (
+from smart_radio_pro.services.station_service import fetch_category, preload_categories
+from smart_radio_pro.ui.components import _clean_name, StationCard
+from smart_radio_pro.ui.mini_player import MiniPlayer
+from smart_radio_pro.ui.spectrum import SpectrumWidget
+from smart_radio_pro.core.api import get_logo_session
+from smart_radio_pro.utils.logo_loader import submit_logo_load
+from smart_radio_pro.utils.logo_cache import (
     vacuum as db_vacuum, stats as db_stats,
 )
-from utils.logger import log
-import utils.stats as play_stats
-from utils.storage import (
+from smart_radio_pro.utils.logger import log
+import smart_radio_pro.utils.stats as play_stats
+from smart_radio_pro.utils.storage import (
     load_favorites, save_favorites,
     load_recent, save_recent, add_to_recent,
     load_session, save_session,
@@ -2228,7 +2228,7 @@ class RadioUI(QMainWindow):
             "font-size: 9pt; font-weight: bold; padding: 5px 14px;")
 
         def _add():
-            from core.api import is_safe_url
+            from smart_radio_pro.core.api import is_safe_url
             name = name_entry.text().strip() or "Custom Station"
             url  = url_entry.text().strip()
             if not url:

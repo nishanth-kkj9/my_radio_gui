@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smart-radio-pro"
+version = "13.1"
+description = "A modern internet radio player built with PyQt6 and VLC"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Nishanth KKJ" }]
+dependencies = [
+    "PyQt6>=6.4.0",
+    "python-vlc>=3.0.20123",
+    "requests>=2.31.0",
+    "Pillow>=10.0.0",
+    "urllib3>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4.0", "ruff>=0.4.0"]
+
+[project.scripts]
+smart-radio-pro = "smart_radio_pro.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
