@@ -1,5 +1,19 @@
 # Changelog — Smart Radio Pro
 
+All notable project and documentation changes are recorded here.
+
+## Unreleased
+
+### Documentation
+- Rebuilt the repository documentation around the actual v13.1 implementation.
+- Added architecture, configuration, development, troubleshooting, contribution, security, support, and code-of-conduct documentation.
+- Added issue and pull-request templates under `.github/`.
+- Corrected README feature details to reflect the current 10-category model and 10-band equalizer.
+- Documented the current CI scope and the absence of functional pytest test modules.
+
+### Repository Hygiene
+- Expanded `.gitignore` coverage for runtime SQLite files, Python tooling caches, build artifacts, and temporary files.
+
 ## v13.1 (UI & Stability Improvements)
 
 ### Critical Bug Fixes

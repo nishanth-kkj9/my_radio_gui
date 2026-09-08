@@ -1,26 +1,40 @@
-# Ignore Visual Studio
-.vs/
-
-# Ignore Python virtual environment
-venv/
-
-# Ignore Python cache
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
 
-# Ignore logs
-*.log
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
 
-# Ignore zip backups
-*.zip
+# Packaging / build output
+build/
+dist/
+*.egg-info/
 
-# Ignore IDE files
+# IDEs / editors
+.vs/
 .vscode/
+.idea/
 
-# Ignore runtime/generated files (optional)
+# Logs and local runtime data
+*.log
+*.tmp
+radio_log.txt
 favorites.json
 recent.json
 session.json
 stats.json
-radio_log.txt
+*.db
+*.db-wal
+*.db-shm
+
+# OS / generated archives
+.DS_Store
+Thumbs.db
+*.zip

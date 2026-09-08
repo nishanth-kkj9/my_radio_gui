@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Troubleshooting guide
+    url: https://github.com/nishanth-kkj9/my_radio_gui/blob/main/docs/TROUBLESHOOTING.md
+    about: Check common VLC, network, playback, cache, and runtime issues first.
+  - name: Development guide
+    url: https://github.com/nishanth-kkj9/my_radio_gui/blob/main/docs/DEVELOPMENT.md
+    about: Read the development and CI workflow before opening implementation questions.
+  - name: Security policy
+    url: https://github.com/nishanth-kkj9/my_radio_gui/blob/main/SECURITY.md
+    about: Never report undisclosed security vulnerabilities in a public issue.
