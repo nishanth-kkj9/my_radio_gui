@@ -158,5 +158,5 @@ def fetch_stations_by_tag(tag: str, limit: int = 30) -> list[dict]:
         })
         return [p for s in data if (p := _parse_station(s))]
     except Exception as e:
-        log(f"fetch_stations_by_tag error '{tag}': {e}", "error")
+        log(f"fetch_stations_by_tag error '{tag}': {e}")
         return []
